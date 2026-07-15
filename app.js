@@ -1,42 +1,53 @@
 require("dotenv").config()
 const express = require('express');
+const loggerTodo = require('./middlewares/logger.js');
+const validatePost = require('./middlewares/validatePost.js');
+const validatePatch = require('./middlewares/validatePatch.js')
+const errorHandler = require('./middlewares/errorHandler.js');
 const app = express();
 app.use(express.json()); // Parse JSON bodies
-
+app.use(loggerTodo);
 let todos = [
   { id: 1, task: 'Learn Node.js', completed: false },
   { id: 2, task: 'Build CRUD API', completed: false },
-  { id: 3, task: 'Take some classes', completed: true},
-  { id: 4, task: 'Watch some videos', completed:true},
+  { id: 3, task: 'Take some classes', completed: false},
+  { id: 4, task: 'Watch some videos', completed:false},
 ];
 
 // GET All – Read
-app.get('/todos', (req, res) => {
+app.get('/todos', (req, res, next) => {
   res.status(200).json(todos); // Send array as JSON
 });
 
 // Get specific id
-app.get('/todospec/:id', (req, res) => {
-  const todo = todos.find((t) => t.id === parseInt(req.params.id));  
-  res.status(202).json(todo);
+app.get('/todospec/:id', (req, res, next) => {
+  try {
+    const todo = todos.find((t) => t.id === parseInt(req.params.id));  
+    if (!todo) throw new Error ("No todo with the id!");
+  } catch (error) {next(error)}
+    res.status(202).json(todo);
 });
 
 //Get only the id that are completed
 app.get('/todos/active', (req, res) => {
-  const todo = todos.filter((t) => t.completed === true);
+  try {
+    const todo = todos.filter((t) => t.completed === true);
+    if (!todo) throw new Error ("All todos have been completed!");
+  } catch (error) {next (error)}
   res.status(200).json(todo);
 });
 
 // POST New – Create
-app.post('/todos', (req, res) => {
+app.post('/todos', validatePost, (req, res, next) => {
   const newTodo = { id: todos.length + 1, ...req.body }; // Auto-ID
-  if(!req.body.task) return res.status(404).json({message: 'A task is needed in the field'});
+  if(!req.body.task) res.status(400).json({"message": "A task is required"})
   todos.push(newTodo);
   res.status(201).json(newTodo); // Echo back
 });
 
+
 // PATCH Update – Partial
-app.patch('/todos/:id', (req, res) => {
+app.patch('/todos/:id', validatePatch, (req, res) => {
   const todo = todos.find((t) => t.id === parseInt(req.params.id)); // Array.find()
   if (!todo) return res.status(404).json({ message: 'Todo not found' });
   Object.assign(todo, req.body); // Merge: e.g., {completed: true}
@@ -58,8 +69,7 @@ app.get('/todos/completed', (req, res) => {
   res.json(completed); // Custom Read!
 });
 
-app.use((err, req, res, next) => {
-  res.status(500).json({ error: 'Server error!' });
-});
+app.use(errorHandler);
+  
 PORT = process.env.PORT
 app.listen(PORT, () => console.log(`Server on port ${PORT}`));
