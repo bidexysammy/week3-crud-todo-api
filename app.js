@@ -21,26 +21,28 @@ app.get('/todos', (req, res, next) => {
 
 // Get specific id
 app.get('/todospec/:id', (req, res, next) => {
+  let todo;
   try {
-    const todo = todos.find((t) => t.id === parseInt(req.params.id));  
+    todo = todos.find((t) => t.id === parseInt(req.params.id));  
     if (!todo) throw new Error ("No todo with the id!");
-  } catch (error) {next(error)}
+  } catch (error) {return next(error)}
     res.status(202).json(todo);
 });
 
 //Get only the id that are completed
-app.get('/todos/active', (req, res) => {
+app.get('/todos/active', (req, res, next) => {
+  let todo;
   try {
-    const todo = todos.filter((t) => t.completed === true);
-    if (!todo) throw new Error ("All todos have been completed!");
-  } catch (error) {next (error)}
+    todo = todos.filter((t) => t.completed === true);
+    if (!todo.length) throw new Error ("All todos have been completed!");
+  } catch (error) {return next (error)}
   res.status(200).json(todo);
 });
 
 // POST New – Create
 app.post('/todos', validatePost, (req, res, next) => {
   const newTodo = { id: todos.length + 1, ...req.body }; // Auto-ID
-  if(!req.body.task) res.status(400).json({"message": "A task is required"})
+  //if(!req.body.task) res.status(400).json({"message": "A task is required"});
   todos.push(newTodo);
   res.status(201).json(newTodo); // Echo back
 });
@@ -61,7 +63,7 @@ app.delete('/todos/:id', (req, res) => {
   todos = todos.filter((t) => t.id !== id); // Array.filter() – non-destructive
   if (todos.length === initialLength)
     return res.status(404).json({ error: 'Not found' });
-  res.status(204).send(); // Silent success
+  res.status(200).send(todos); // Silent success
 });
 
 app.get('/todos/completed', (req, res) => {
